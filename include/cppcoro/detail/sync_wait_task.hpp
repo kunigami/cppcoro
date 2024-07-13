@@ -16,14 +16,13 @@
 namespace cppcoro::detail {
 class sync_wait_task;
 
-template<typename RESULT>
 class sync_wait_task_promise final
 {
-	using coroutine_handle_t = std::coroutine_handle<sync_wait_task_promise<RESULT>>;
+	using coroutine_handle_t = std::coroutine_handle<sync_wait_task_promise<std::string&>>;
 
 public:
 
-	using reference = RESULT&&;
+	using reference = (std::string&)&&;
 
 	sync_wait_task_promise() noexcept
 	{}
@@ -85,7 +84,7 @@ public:
 private:
 
 	detail::lightweight_manual_reset_event* m_event;
-	std::remove_reference_t<RESULT>* m_result;
+	std::remove_reference_t<std::string&>* m_result;
 	std::exception_ptr m_exception;
 
 };
@@ -93,7 +92,7 @@ private:
 class sync_wait_task {
 public:
 
-	using promise_type = sync_wait_task_promise<std::string&>;
+	using promise_type = sync_wait_task_promise;
 
 	using coroutine_handle_t = std::coroutine_handle<promise_type>;
 
