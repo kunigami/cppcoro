@@ -6,6 +6,7 @@
 
 #include <cppcoro/awaitable_traits.hpp>
 #include <cppcoro/detail/lightweight_manual_reset_event.hpp>
+#include <cppcoro/task.hpp>
 
 #include <coroutine>
 #include <cassert>
@@ -124,10 +125,7 @@ private:
 	coroutine_handle_t m_coroutine;
 };
 
-template<
-	typename AWAITABLE,
-	typename RESULT = typename cppcoro::awaitable_traits<AWAITABLE&&>::await_result_t>
-sync_wait_task<RESULT> make_sync_wait_task(AWAITABLE&& awaitable) {
-	co_yield co_await std::forward<AWAITABLE>(awaitable);
+sync_wait_task<std::string&> make_sync_wait_task(Task&& awaitable) {
+	co_yield co_await std::forward<Task>(awaitable);
 }
 } // namespace cppcoro::detail
