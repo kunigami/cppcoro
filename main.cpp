@@ -15,30 +15,24 @@ task<std::string> hw() {
   co_return a + b; 
 }
 
-// cppcoro::task<> usage_example()
-// {
-//   // Calling function creates a new task but doesn't start
-//   // executing the coroutine yet.
-//   cppcoro::task<int> countTask = count_lines("foo.txt");
-
-//   // ...
-
-//   // Coroutine is only started when we later co_await the task.
-//   int lineCount = co_await countTask;
-
-//   std::cout << "line count = " << lineCount << std::endl;
-// }
-
-task<> run() {
+task<std::string> hw2() {
   auto a = co_await hw();
+  auto b = co_await hw();
+  co_return a + b; 
+}
+
+task<std::string> run() {
+  auto a = co_await hw2();
   std::cout << a << std::endl;
-  co_return;
+  co_return "";
 }
 
 }
 
 int main() {
   cppcoro::sync_wait(cppcoro::run());
-  
+  #if CPPCORO_COMPILER_SUPPORTS_SYMMETRIC_TRANSFER
+  std::cout << "CPPCORO_COMPILER_SUPPORTS_SYMMETRIC_TRANSFER" << std::endl;
+  #endif
   return 0;
 }
