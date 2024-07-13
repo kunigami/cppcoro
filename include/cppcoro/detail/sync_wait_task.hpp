@@ -14,7 +14,6 @@
 #include <utility>
 
 namespace cppcoro::detail {
-template<typename RESULT>
 class sync_wait_task;
 
 template<typename RESULT>
@@ -91,11 +90,10 @@ private:
 
 };
 
-template<typename RESULT>
-class sync_wait_task final {
+class sync_wait_task {
 public:
 
-	using promise_type = sync_wait_task_promise<RESULT>;
+	using promise_type = sync_wait_task_promise<std::string&>;
 
 	using coroutine_handle_t = std::coroutine_handle<promise_type>;
 
@@ -125,7 +123,7 @@ private:
 	coroutine_handle_t m_coroutine;
 };
 
-sync_wait_task<std::string&> make_sync_wait_task(Task&& awaitable) {
+sync_wait_task make_sync_wait_task(Task&& awaitable) {
 	co_yield co_await std::forward<Task>(awaitable);
 }
 } // namespace cppcoro::detail
