@@ -9,7 +9,7 @@
 #include <cppcoro/file_share_mode.hpp>
 #include <cppcoro/file_buffering_mode.hpp>
 
-#include <experimental/filesystem>
+#include <filesystem>
 
 namespace cppcoro
 {
@@ -49,9 +49,6 @@ namespace cppcoro
 
 	protected:
 
-#if CPPCORO_OS_WINNT
-		read_only_file(detail::win32::safe_handle&& fileHandle) noexcept;
-#endif
 
 	};
 }

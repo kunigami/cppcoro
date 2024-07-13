@@ -11,7 +11,7 @@
 
 #include <atomic>
 #include <optional>
-#include <experimental/coroutine>
+#include <coroutine>
 
 #if CPPCORO_OS_WINNT
 # include <cppcoro/detail/win32.hpp>
@@ -94,7 +94,7 @@ namespace cppcoro
 
 	};
 
-#endif
 }
+#endif
 
 #endif
