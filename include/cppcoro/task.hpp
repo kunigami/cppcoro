@@ -15,7 +15,7 @@
 
 namespace cppcoro {
 
-class task;
+class Task;
 
 struct final_awaitable {
 	bool await_ready() const noexcept { return false; }
@@ -30,13 +30,13 @@ struct final_awaitable {
 	void await_resume() noexcept {}
 };
 
-class task_promise {
+class TaskPromise {
 	friend struct final_awaitable;
 public:
 
-	task_promise() noexcept {}
+	TaskPromise() noexcept {}
 
-	~task_promise() {
+	~TaskPromise() {
 		switch (m_resultType)
 		{
 		case result_type::value:
@@ -49,7 +49,7 @@ public:
 		}
 	}
 
-	task get_return_object() noexcept;
+	Task get_return_object() noexcept;
 
 	void unhandled_exception() noexcept {
 	}
@@ -102,17 +102,17 @@ private:
 };
  
 /// \brief
-/// A task represents an operation that produces a result both lazily
+/// A Task represents an operation that produces a result both lazily
 /// and asynchronously.
 ///
-/// When you call a coroutine that returns a task, the coroutine
+/// When you call a coroutine that returns a Task, the coroutine
 /// simply captures any passed parameters and returns exeuction to the
 /// caller. Execution of the coroutine body does not start until the
 /// coroutine is first co_await'ed.
-class task {
+class Task {
 public:
 
-	using promise_type = task_promise;
+	using promise_type = TaskPromise;
 
 	using value_type = std::string;
 
@@ -138,27 +138,27 @@ private:
 
 public:
 
-	task() noexcept
+	Task() noexcept
 		: m_coroutine(nullptr) {}
 
-	explicit task(std::coroutine_handle<promise_type> coroutine)
+	explicit Task(std::coroutine_handle<promise_type> coroutine)
 		: m_coroutine(coroutine) {}
 
-	task(task&& t) noexcept
+	Task(Task&& t) noexcept
 		: m_coroutine(t.m_coroutine) {
 		t.m_coroutine = nullptr;
 	}
 
-	task(const task&) = delete;
-	task& operator=(const task&) = delete;
+	Task(const Task&) = delete;
+	Task& operator=(const Task&) = delete;
 
-	~task() {
+	~Task() {
 		if (m_coroutine) {
 			m_coroutine.destroy();
 		}
 	}
 
-	task& operator=(task&& other) noexcept {
+	Task& operator=(Task&& other) noexcept {
 		if (std::addressof(other) != this) {
 			if (m_coroutine)
 			{
@@ -173,9 +173,9 @@ public:
 	}
 
 	/// \brief
-	/// Query if the task result is complete.
+	/// Query if the Task result is complete.
 	///
-	/// Awaiting a task that is ready is guaranteed not to block/suspend.
+	/// Awaiting a Task that is ready is guaranteed not to block/suspend.
 	bool is_ready() const noexcept {
 		return !m_coroutine || m_coroutine.done();
 	}
@@ -198,7 +198,7 @@ public:
 	}
 
 	/// \brief
-	/// Returns an awaitable that will await completion of the task without
+	/// Returns an awaitable that will await completion of the Task without
 	/// attempting to retrieve the result.
 	auto when_ready() const noexcept {
 		struct awaitable : awaitable_base {
@@ -213,7 +213,7 @@ private:
 	std::coroutine_handle<promise_type> m_coroutine;
 };
 
-task task_promise::get_return_object() noexcept {
-	return task{ std::coroutine_handle<task_promise>::from_promise(*this) };
+Task TaskPromise::get_return_object() noexcept {
+	return Task{ std::coroutine_handle<TaskPromise>::from_promise(*this) };
 }
 } // namespace cppcoro
