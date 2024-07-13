@@ -4,7 +4,6 @@
 ///////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include <cppcoro/awaitable_traits.hpp>
 #include <cppcoro/detail/lightweight_manual_reset_event.hpp>
 #include <cppcoro/task.hpp>
 
@@ -18,12 +17,9 @@ class sync_wait_task;
 
 class sync_wait_task_promise final
 {
-	using coroutine_handle_t = std::coroutine_handle<sync_wait_task_promise<std::string&>>;
+	using coroutine_handle_t = std::coroutine_handle<sync_wait_task_promise>;
 
 public:
-
-	using reference = (std::string&)&&;
-
 	sync_wait_task_promise() noexcept
 	{}
 
@@ -57,7 +53,7 @@ public:
 		return completion_notifier{};
 	}
 
-	auto yield_value(reference result) noexcept {
+	auto yield_value(std::string& result) noexcept {
 		m_result = std::addressof(result);
 		return final_suspend();
 	}
@@ -72,19 +68,19 @@ public:
 		m_exception = std::current_exception();
 	}
 
-	reference result() {
+	std::string& result() {
 		if (m_exception)
 		{
 			std::rethrow_exception(m_exception);
 		}
 
-		return static_cast<reference>(*m_result);
+		return static_cast<std::string&>(*m_result);
 	}
 
 private:
 
 	detail::lightweight_manual_reset_event* m_event;
-	std::remove_reference_t<std::string&>* m_result;
+	std::string* m_result;
 	std::exception_ptr m_exception;
 
 };

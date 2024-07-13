@@ -6,7 +6,6 @@
 
 #include <cppcoro/detail/lightweight_manual_reset_event.hpp>
 #include <cppcoro/detail/sync_wait_task.hpp>
-#include <cppcoro/awaitable_traits.hpp>
 #include <cppcoro/task.hpp>
 
 #include <cstdint>
