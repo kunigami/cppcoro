@@ -15,7 +15,7 @@
 
 namespace cppcoro {
 
-template<typename T> class task;
+class task;
 
 struct final_awaitable {
 	bool await_ready() const noexcept { return false; }
@@ -30,8 +30,6 @@ struct final_awaitable {
 	void await_resume() noexcept {}
 };
 
-
-template<typename T>
 class task_promise {
 	friend struct final_awaitable;
 public:
@@ -42,7 +40,6 @@ public:
 		switch (m_resultType)
 		{
 		case result_type::value:
-			m_value.~T();
 			break;
 		case result_type::exception:
 			m_exception.~exception_ptr();
@@ -52,20 +49,20 @@ public:
 		}
 	}
 
-	task<T> get_return_object() noexcept;
+	task get_return_object() noexcept;
 
 	void unhandled_exception() noexcept {
 	}
 
 	template<
 		typename VALUE,
-		typename = std::enable_if_t<std::is_convertible_v<VALUE&&, T>>>
+		typename = std::enable_if_t<std::is_convertible_v<VALUE&&, std::string>>>
 	void return_value(VALUE&& value) {
-		::new (static_cast<void*>(std::addressof(m_value))) T(std::forward<VALUE>(value));
+		::new (static_cast<void*>(std::addressof(m_value))) std::string(std::forward<VALUE>(value));
 		m_resultType = result_type::value;
 	}
 
-	T& result() &
+	std::string& result() &
 	{
 		if (m_resultType == result_type::exception)
 		{
@@ -98,7 +95,7 @@ private:
 
 	union
 	{
-		T m_value;
+		std::string m_value;
 		std::exception_ptr m_exception;
 	};
 
@@ -112,13 +109,12 @@ private:
 /// simply captures any passed parameters and returns exeuction to the
 /// caller. Execution of the coroutine body does not start until the
 /// coroutine is first co_await'ed.
-template<typename T>
 class task {
 public:
 
-	using promise_type = task_promise<T>;
+	using promise_type = task_promise;
 
-	using value_type = T;
+	using value_type = std::string;
 
 private:
 
@@ -217,9 +213,7 @@ private:
 	std::coroutine_handle<promise_type> m_coroutine;
 };
 
-template<typename T>
-task<T> task_promise<T>::get_return_object() noexcept
-{
-	return task<T>{ std::coroutine_handle<task_promise>::from_promise(*this) };
+task task_promise::get_return_object() noexcept {
+	return task{ std::coroutine_handle<task_promise>::from_promise(*this) };
 }
 } // namespace cppcoro
