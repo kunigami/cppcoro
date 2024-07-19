@@ -11,78 +11,95 @@
 #include <cassert>
 
 #include <coroutine>
+#include <iostream>
 
 namespace cppcoro {
 
 class Task;
+class TaskPromise;
 
-struct final_awaitable {
+struct FinalAwaitable {
 	bool await_ready() const noexcept { return false; }
 
-	template<typename PROMISE>
 	std::coroutine_handle<> await_suspend(
-		std::coroutine_handle<PROMISE> coro) noexcept
-	{
-		return coro.promise().m_continuation;
-	}
+		std::coroutine_handle<TaskPromise> coro
+	) noexcept;
 
 	void await_resume() noexcept {}
 };
 
-class TaskPromise {
-	friend struct final_awaitable;
-public:
+struct Awaitable {
+	std::coroutine_handle<TaskPromise> m_coroutine;
 
-	TaskPromise() noexcept {}
+	Awaitable(std::coroutine_handle<TaskPromise> coroutine) noexcept
+		: m_coroutine(coroutine) {}
+
+	bool await_ready() const noexcept;
+
+	std::coroutine_handle<> await_suspend(
+		std::coroutine_handle<> awaitingCoroutine) noexcept;
+
+	std::string& await_resume();
+};
+
+class TaskPromise {
+	friend struct FinalAwaitable;	
+public:
+	static int instanceCount;
+
+	TaskPromise() {
+		m_id = instanceCount++;
+		print("construct TaskPromise");
+	};
 
 	~TaskPromise() {
-		switch (m_resultType)
-		{
-		case result_type::value:
-			break;
-		case result_type::exception:
+		if (m_exception) {
 			m_exception.~exception_ptr();
-			break;
-		default:
-			break;
 		}
 	}
 
+	// Construct Task / coroutine_handler from a promise.
+	// Part of the promise "interface"
 	Task get_return_object() noexcept;
 
 	void unhandled_exception() noexcept {
+		::new (static_cast<void*>(std::addressof(m_exception))) std::exception_ptr(
+					std::current_exception());
 	}
 
-	template<
-		typename VALUE,
-		typename = std::enable_if_t<std::is_convertible_v<VALUE&&, std::string>>>
-	void return_value(VALUE&& value) {
-		::new (static_cast<void*>(std::addressof(m_value))) std::string(std::forward<VALUE>(value));
-		m_resultType = result_type::value;
+	// Called when we call 
+	//
+	// co_return value
+	//
+	// inside the coroutine associated w/ this promise 
+	void return_value(const std::string& value) {
+		print("Storing value: " + value);
+		m_value = value;
 	}
 
-	std::string& result() &
-	{
-		if (m_resultType == result_type::exception)
-		{
+	std::string& result() {
+		if (m_exception) {
 			std::rethrow_exception(m_exception);
 		}
-
-		assert(m_resultType == result_type::value);
-
 		return m_value;
 	}
 
+	// Do not start executing the task
 	auto initial_suspend() noexcept {
 		return std::suspend_always{};
 	}
 
 	auto final_suspend() noexcept {
-		return final_awaitable{};
+		print("final_suspend");
+		return FinalAwaitable{};
 	}
 
 	void set_continuation(std::coroutine_handle<> continuation) noexcept {
 		m_continuation = continuation;
+	}
+
+	void print(const std::string & msg) {
+		std::cout << "task[" << m_id << "] " << msg << std::endl;
 	}
 
 private:
@@ -92,13 +109,12 @@ private:
 
 	result_type m_resultType = result_type::empty;
 
-	union
-	{
-		std::string m_value;
-		std::exception_ptr m_exception;
-	};
-
+	std::string m_value;
+	std::exception_ptr m_exception;
+	int m_id = -1;
 };
+
+int TaskPromise::instanceCount = 0;
  
 /// \brief
 /// A Task represents an operation that produces a result both lazily
@@ -110,30 +126,10 @@ private:
 /// coroutine is first co_await'ed.
 class Task {
 public:
-
 	using promise_type = TaskPromise;
-
-	using value_type = std::string;
 
 private:
 
-	struct awaitable_base {
-		std::coroutine_handle<promise_type> m_coroutine;
-
-		awaitable_base(std::coroutine_handle<promise_type> coroutine) noexcept
-			: m_coroutine(coroutine)
-		{}
-
-		bool await_ready() const noexcept {
-			return !m_coroutine || m_coroutine.done();
-		}
-
-		std::coroutine_handle<> await_suspend(
-			std::coroutine_handle<> awaitingCoroutine) noexcept {
-			m_coroutine.promise().set_continuation(awaitingCoroutine);
-			return m_coroutine;
-		}
-	};
 
 public:
 
@@ -151,68 +147,59 @@ public:
 	Task(const Task&) = delete;
 	Task& operator=(const Task&) = delete;
 
-	~Task() {
-		if (m_coroutine) {
-			m_coroutine.destroy();
-		}
-	}
+	~Task() = default;
 
-	Task& operator=(Task&& other) noexcept {
-		if (std::addressof(other) != this) {
-			if (m_coroutine)
-			{
-				m_coroutine.destroy();
-			}
-
-			m_coroutine = other.m_coroutine;
-			other.m_coroutine = nullptr;
-		}
-
-		return *this;
-	}
-
-	/// \brief
-	/// Query if the Task result is complete.
-	///
-	/// Awaiting a Task that is ready is guaranteed not to block/suspend.
-	bool is_ready() const noexcept {
-		return !m_coroutine || m_coroutine.done();
-	}
-
-	auto operator co_await() const & noexcept {
-		struct awaitable : awaitable_base {
-			using awaitable_base::awaitable_base;
-
-			decltype(auto) await_resume()
-			{
-				if (!this->m_coroutine) {
-					throw std::runtime_error("broken promise");
-				}
-
-				return this->m_coroutine.promise().result();
-			}
-		};
-
-		return awaitable{ m_coroutine };
-	}
-
-	/// \brief
-	/// Returns an awaitable that will await completion of the Task without
-	/// attempting to retrieve the result.
-	auto when_ready() const noexcept {
-		struct awaitable : awaitable_base {
-			using awaitable_base::awaitable_base;
-
-			void await_resume() const noexcept {}
-		};
-		return awaitable{ m_coroutine };
+	// Example call:
+	//
+	// std::string r = co_await some_coroutine();
+	//
+	// This corresponds to:
+	//
+	// Task coro = some_coroutine();
+	// Awaitable a = coro.co_await();
+	Awaitable operator co_await() const & noexcept {
+		m_coroutine.promise().print("co_await");
+		return Awaitable{ m_coroutine };
 	}
 
 private:
 	std::coroutine_handle<promise_type> m_coroutine;
 };
 
+std::coroutine_handle<> FinalAwaitable::await_suspend(
+	std::coroutine_handle<TaskPromise> coro
+) noexcept {
+	return coro.promise().m_continuation;
+}
+
+std::coroutine_handle<> Awaitable::await_suspend(
+	std::coroutine_handle<> awaitingCoroutine
+) noexcept {
+	m_coroutine.promise().print("[Awaitable] await_suspend");
+	m_coroutine.promise().set_continuation(awaitingCoroutine);
+	return m_coroutine;
+}
+
+bool Awaitable::await_ready() const noexcept {
+	bool is_ready = !m_coroutine || m_coroutine.done();
+	std::string msg = "[Awaitable] await_ready? ";
+	this->m_coroutine.promise().print(
+		msg + (is_ready ? "yes": "no")
+	);
+	return is_ready;
+}
+
+std::string& Awaitable::await_resume() {
+	if (!this->m_coroutine) {
+		throw std::runtime_error("broken promise");
+	}
+	this->m_coroutine.promise().print("[Awaitable] await_resume");
+
+	return this->m_coroutine.promise().result();
+}
+
 Task TaskPromise::get_return_object() noexcept {
+	print("constructing Task");
 	return Task{ std::coroutine_handle<TaskPromise>::from_promise(*this) };
 }
 } // namespace cppcoro

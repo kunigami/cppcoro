@@ -10,7 +10,7 @@
 #include <cppcoro/detail/when_all_counter.hpp>
 #include <cppcoro/detail/void_value.hpp>
 
-#include <experimental/coroutine>
+#include <coroutine>
 #include <cassert>
 
 namespace cppcoro
@@ -28,7 +28,7 @@ namespace cppcoro
 		{
 		public:
 
-			using coroutine_handle_t = std::experimental::coroutine_handle<when_all_task_promise<RESULT>>;
+			using coroutine_handle_t = std::coroutine_handle<when_all_task_promise<RESULT>>;
 
 			when_all_task_promise() noexcept
 			{}
@@ -38,7 +38,7 @@ namespace cppcoro
 				return coroutine_handle_t::from_promise(*this);
 			}
 
-			std::experimental::suspend_always initial_suspend() noexcept
+			std::suspend_always initial_suspend() noexcept
 			{
 				return{};
 			}
@@ -97,7 +97,7 @@ namespace cppcoro
 					bool await_ready() noexcept {
 						return true;
 					}
-					void await_suspend(std::experimental::coroutine_handle<>) noexcept {}
+					void await_suspend(std::coroutine_handle<>) noexcept {}
 					when_all_task_promise& await_resume() noexcept
 					{
 						return *m_promise;
@@ -155,7 +155,7 @@ namespace cppcoro
 		{
 		public:
 
-			using coroutine_handle_t = std::experimental::coroutine_handle<when_all_task_promise<void>>;
+			using coroutine_handle_t = std::coroutine_handle<when_all_task_promise<void>>;
 
 			when_all_task_promise() noexcept
 			{}
@@ -165,7 +165,7 @@ namespace cppcoro
 				return coroutine_handle_t::from_promise(*this);
 			}
 
-			std::experimental::suspend_always initial_suspend() noexcept
+			std::suspend_always initial_suspend() noexcept
 			{
 				return{};
 			}
@@ -301,17 +301,7 @@ namespace cppcoro
 			std::enable_if_t<!std::is_void_v<RESULT>, int> = 0>
 		when_all_task<RESULT> make_when_all_task(AWAITABLE awaitable)
 		{
-#if CPPCORO_COMPILER_MSVC
-			// HACK: Workaround another bug in MSVC where the expression 'co_yield co_await x' seems
-			// to completely ignore the co_yield an never calls promise.yield_value().
-			// The coroutine seems to be resuming the 'co_await' after the 'co_yield'
-			// rather than before the 'co_yield'.
-			// This bug is present in VS 2017.7 and VS 2017.8.
-			auto& promise = co_await when_all_task_promise<RESULT>::get_promise;
-			co_await promise.yield_value(co_await std::forward<AWAITABLE>(awaitable));
-#else
 			co_yield co_await static_cast<AWAITABLE&&>(awaitable);
-#endif
 		}
 
 		template<
@@ -329,17 +319,7 @@ namespace cppcoro
 			std::enable_if_t<!std::is_void_v<RESULT>, int> = 0>
 		when_all_task<RESULT> make_when_all_task(std::reference_wrapper<AWAITABLE> awaitable)
 		{
-#if CPPCORO_COMPILER_MSVC
-			// HACK: Workaround another bug in MSVC where the expression 'co_yield co_await x' seems
-			// to completely ignore the co_yield and never calls promise.yield_value().
-			// The coroutine seems to be resuming the 'co_await' after the 'co_yield'
-			// rather than before the 'co_yield'.
-			// This bug is present in VS 2017.7 and VS 2017.8.
-			auto& promise = co_await when_all_task_promise<RESULT>::get_promise;
-			co_await promise.yield_value(co_await awaitable.get());
-#else
 			co_yield co_await awaitable.get();
-#endif
 		}
 
 		template<
