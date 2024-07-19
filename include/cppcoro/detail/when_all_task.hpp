@@ -14,8 +14,7 @@
 
 namespace cppcoro::detail {
 
-template<typename TASK_CONTAINER>
-class when_all_ready_awaitable;
+class WhenAllReadyAwaitable;
 
 class WhenAllTask;
 
@@ -133,8 +132,7 @@ public:
 
 private:
 
-	template<typename TASK_CONTAINER>
-	friend class when_all_ready_awaitable;
+	friend class WhenAllReadyAwaitable;
 
 	void start(when_all_counter& counter) noexcept {
 		m_coroutine.promise().start(counter);

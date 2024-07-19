@@ -28,7 +28,6 @@ auto when_all_ready(std::vector<Task> awaitables) {
 		tasks.emplace_back(detail::make_when_all_task(std::move(awaitable)));
 	}
 
-	return detail::when_all_ready_awaitable<std::vector<detail::WhenAllTask>>(
-		std::move(tasks));
+	return detail::WhenAllReadyAwaitable(std::move(tasks));
 }
 } // namespace cppcoro
