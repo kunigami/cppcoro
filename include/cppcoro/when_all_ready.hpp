@@ -21,14 +21,14 @@
 namespace cppcoro {
 
 auto when_all_ready(std::vector<Task> awaitables) {
-	std::vector<detail::when_all_task<std::string&>> tasks;
+	std::vector<detail::WhenAllTask> tasks;
 
 	tasks.reserve(awaitables.size());
 	for (auto& awaitable : awaitables) {
 		tasks.emplace_back(detail::make_when_all_task(std::move(awaitable)));
 	}
 
-	return detail::when_all_ready_awaitable<std::vector<detail::when_all_task<std::string&>>>(
+	return detail::when_all_ready_awaitable<std::vector<detail::WhenAllTask>>(
 		std::move(tasks));
 }
 } // namespace cppcoro
