@@ -304,32 +304,14 @@ namespace cppcoro
 			co_yield co_await static_cast<AWAITABLE&&>(awaitable);
 		}
 
-		template<
-			typename AWAITABLE,
-			typename RESULT = typename cppcoro::awaitable_traits<AWAITABLE&&>::await_result_t,
-			std::enable_if_t<std::is_void_v<RESULT>, int> = 0>
-		when_all_task<void> make_when_all_task(AWAITABLE awaitable)
-		{
-			co_await static_cast<AWAITABLE&&>(awaitable);
-		}
-
-		template<
-			typename AWAITABLE,
-			typename RESULT = typename cppcoro::awaitable_traits<AWAITABLE&>::await_result_t,
-			std::enable_if_t<!std::is_void_v<RESULT>, int> = 0>
-		when_all_task<RESULT> make_when_all_task(std::reference_wrapper<AWAITABLE> awaitable)
-		{
-			co_yield co_await awaitable.get();
-		}
-
-		template<
-			typename AWAITABLE,
-			typename RESULT = typename cppcoro::awaitable_traits<AWAITABLE&>::await_result_t,
-			std::enable_if_t<std::is_void_v<RESULT>, int> = 0>
-		when_all_task<void> make_when_all_task(std::reference_wrapper<AWAITABLE> awaitable)
-		{
-			co_await awaitable.get();
-		}
+		// template<
+		// 	typename AWAITABLE,
+		// 	typename RESULT = typename cppcoro::awaitable_traits<AWAITABLE&>::await_result_t,
+		// 	std::enable_if_t<!std::is_void_v<RESULT>, int> = 0>
+		// when_all_task<RESULT> make_when_all_task(std::reference_wrapper<AWAITABLE> awaitable)
+		// {
+		// 	co_yield co_await awaitable.get();
+		// }
 	}
 }
 
