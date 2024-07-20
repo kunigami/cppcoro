@@ -34,19 +34,20 @@ public:
 	}
 
 	auto final_suspend() noexcept {
-		class completion_notifier {
+		class CompletionNotifier {
 		public:
 
 			bool await_ready() const noexcept { return false; }
 
 			void await_suspend(coroutine_handle_t coro) const noexcept {
+				std::cout << "[CompletionNotifier] await_suspend()" << std::endl;
 				coro.promise().m_counter->notify_awaitable_completed();
 			}
 
 			void await_resume() const noexcept {}
 		};
 
-		return completion_notifier{};
+		return CompletionNotifier{};
 	}
 
 	void unhandled_exception() noexcept {
@@ -65,7 +66,8 @@ public:
 		return final_suspend();
 	}
 
-	void start(when_all_counter& counter) noexcept {
+	void start(WhenAllCounter& counter) noexcept {
+		std::cout << "[WhenAllTaskPromise] start" << std::endl;
 		m_counter = &counter;
 		coroutine_handle_t::from_promise(*this).resume();
 	}
@@ -88,7 +90,7 @@ private:
 		}
 	}
 
-	when_all_counter* m_counter;
+	WhenAllCounter* m_counter;
 	std::exception_ptr m_exception;
 	std::add_pointer_t<std::string&> m_result;
 
@@ -134,7 +136,7 @@ private:
 
 	friend class WhenAllReadyAwaitable;
 
-	void start(when_all_counter& counter) noexcept {
+	void start(WhenAllCounter& counter) noexcept {
 		m_coroutine.promise().start(counter);
 	}
 
@@ -143,7 +145,22 @@ private:
 };
 
 WhenAllTask make_when_all_task(Task&& awaitable) {
-	co_yield co_await static_cast<Task&&>(awaitable);
+	std::cout << "[make_when_all_task] begin" << std::endl;
+	// Calls Task::co_await() -> Awaitable
+	// Awaitable::await_suspend()
+	// ...
+	// Gets resumed by FinalAwaitable::await_resume()
+	//
+	// std::string value = Awaitable::await_resume()
+	std::string value = co_await awaitable;
+	std::cout << "[make_when_all_task] got value: " << value << std::endl;
+	// awaitable = WhenAllTaskPromise::yield_value()
+	// - stores `value` internally
+	// - returns final_suspend(): CompletionNotifier
+	// co_await awaitable
+	//	- CompletionNotifier::await_suspend()
+	//     - WhenAllTaskPromise::m_counter->notify_awaitable_completed
+	co_yield value;
 }
 
 } // namespace cppcoro::detail

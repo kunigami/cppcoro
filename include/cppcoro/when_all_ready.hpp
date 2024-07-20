@@ -20,7 +20,7 @@
 
 namespace cppcoro {
 
-auto when_all_ready(std::vector<Task> awaitables) {
+detail::WhenAllReadyAwaitable when_all_ready(std::vector<Task> awaitables) {
 	std::vector<detail::WhenAllTask> tasks;
 
 	tasks.reserve(awaitables.size());
@@ -28,6 +28,7 @@ auto when_all_ready(std::vector<Task> awaitables) {
 		tasks.emplace_back(detail::make_when_all_task(std::move(awaitable)));
 	}
 
+	std::cout << "[when_all_ready] creating WhenAllReadyAwaitable\n";
 	return detail::WhenAllReadyAwaitable(std::move(tasks));
 }
 } // namespace cppcoro

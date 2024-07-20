@@ -25,10 +25,10 @@ public:
 	WhenAllReadyAwaitable& operator=(const WhenAllReadyAwaitable&) = delete;
 
 	auto operator co_await() & noexcept {
-		class awaiter {
+		class InternalAwaiter {
 		public:
 
-			awaiter(WhenAllReadyAwaitable& awaitable)
+			InternalAwaiter(WhenAllReadyAwaitable& awaitable)
 				: m_awaitable(awaitable) {}
 
 			bool await_ready() const noexcept {
@@ -48,15 +48,15 @@ public:
 			WhenAllReadyAwaitable& m_awaitable;
 		};
 
-		return awaiter{ *this };
+		return InternalAwaiter{ *this };
 	}
 
 
 	auto operator co_await() && noexcept {
-		class awaiter {
+		class InternalAwaiter {
 		public:
 
-			awaiter(WhenAllReadyAwaitable& awaitable)
+			InternalAwaiter(WhenAllReadyAwaitable& awaitable)
 				: m_awaitable(awaitable) {}
 
 			bool await_ready() const noexcept {
@@ -76,7 +76,7 @@ public:
 			WhenAllReadyAwaitable& m_awaitable;
 		};
 
-		return awaiter{ *this };
+		return InternalAwaiter{ *this };
 	}
 
 private:
@@ -86,15 +86,15 @@ private:
 	}
 
 	bool try_await(std::coroutine_handle<> awaitingCoroutine) noexcept {
-		for (auto&& task : m_tasks)
-		{
+		std::cout << "[WhenAllReadyAwaitable] try_await" << std::endl;
+		for (auto&& task : m_tasks) {
 			task.start(m_counter);
 		}
 
 		return m_counter.try_await(awaitingCoroutine);
 	}
 
-	when_all_counter m_counter;
+	WhenAllCounter m_counter;
 	std::vector<WhenAllTask> m_tasks;
 };
 } // namespace cppcoro::detail
