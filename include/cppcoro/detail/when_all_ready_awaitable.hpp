@@ -17,40 +17,13 @@ namespace cppcoro::detail {
 class WhenAllReadyAwaitable {
 public:
 
+	// Sets counter to the number of tasks.
 	explicit WhenAllReadyAwaitable(std::vector<WhenAllTask>&& tasks) noexcept
 		: m_counter(tasks.size())
 		, m_tasks(std::move(tasks)) {}
 
 	WhenAllReadyAwaitable(const WhenAllReadyAwaitable&) = delete;
 	WhenAllReadyAwaitable& operator=(const WhenAllReadyAwaitable&) = delete;
-
-	auto operator co_await() & noexcept {
-		class InternalAwaiter {
-		public:
-
-			InternalAwaiter(WhenAllReadyAwaitable& awaitable)
-				: m_awaitable(awaitable) {}
-
-			bool await_ready() const noexcept {
-				return m_awaitable.is_ready();
-			}
-
-			bool await_suspend(std::coroutine_handle<> awaitingCoroutine) noexcept {
-				return m_awaitable.try_await(awaitingCoroutine);
-			}
-
-			std::vector<WhenAllTask>& await_resume() noexcept {
-				return m_awaitable.m_tasks;
-			}
-
-		private:
-
-			WhenAllReadyAwaitable& m_awaitable;
-		};
-
-		return InternalAwaiter{ *this };
-	}
-
 
 	auto operator co_await() && noexcept {
 		class InternalAwaiter {
@@ -63,7 +36,7 @@ public:
 				return m_awaitable.is_ready();
 			}
 
-			bool await_suspend(std::coroutine_handle<> awaitingCoroutine) noexcept {
+			bool await_suspend(std::coroutine_handle<TaskPromise> awaitingCoroutine) noexcept {
 				return m_awaitable.try_await(awaitingCoroutine);
 			}
 
@@ -85,13 +58,15 @@ private:
 		return m_counter.is_ready();
 	}
 
-	bool try_await(std::coroutine_handle<> awaitingCoroutine) noexcept {
+	bool try_await(std::coroutine_handle<TaskPromise> awaitingCoroutine) noexcept {
 		std::cout << "[WhenAllReadyAwaitable] try_await" << std::endl;
 		for (auto&& task : m_tasks) {
 			task.start(m_counter);
 		}
 
-		return m_counter.try_await(awaitingCoroutine);
+		bool result = m_counter.try_await(awaitingCoroutine);
+		std::cout << "[WhenAllReadyAwaitable] should yield? " << result << std::endl;
+		return result;
 	}
 
 	WhenAllCounter m_counter;

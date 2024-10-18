@@ -38,7 +38,7 @@ namespace cppcoro
 
 	template<typename SCHEDULER, typename AWAITABLE>
 	auto schedule_on(SCHEDULER& scheduler, AWAITABLE awaitable)
-		-> task<detail::remove_rvalue_reference_t<typename awaitable_traits<AWAITABLE>::await_result_t>>
+		-> Task
 	{
 		co_await scheduler.schedule();
 		co_return co_await std::move(awaitable);

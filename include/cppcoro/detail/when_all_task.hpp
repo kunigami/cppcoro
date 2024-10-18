@@ -18,6 +18,20 @@ class WhenAllReadyAwaitable;
 
 class WhenAllTask;
 
+class WhenAllTaskPromise;
+
+class CompletionNotifier {
+public:
+
+	bool await_ready() const noexcept { return false; }
+
+	void await_suspend(std::coroutine_handle<WhenAllTaskPromise> coro) const noexcept;
+
+	void await_resume() const noexcept {}
+};
+
+
+// This promise is associated with the function make_when_all_task()
 class WhenAllTaskPromise final {
 public:
 
@@ -33,21 +47,8 @@ public:
 		return{};
 	}
 
-	auto final_suspend() noexcept {
-		class CompletionNotifier {
-		public:
-
-			bool await_ready() const noexcept { return false; }
-
-			void await_suspend(coroutine_handle_t coro) const noexcept {
-				std::cout << "[CompletionNotifier] await_suspend()" << std::endl;
-				coro.promise().m_counter->notify_awaitable_completed();
-			}
-
-			void await_resume() const noexcept {}
-		};
-
-		return CompletionNotifier{};
+	CompletionNotifier final_suspend() noexcept {
+		assert(false);
 	}
 
 	void unhandled_exception() noexcept {
@@ -61,11 +62,15 @@ public:
 		assert(false);
 	}
 
-	auto yield_value(std::string& result) noexcept {
+	// Saves the value internally, the caller will retrieve this
+	// using .result().
+	CompletionNotifier yield_value(std::string& result) noexcept {
 		m_result = std::addressof(result);
-		return final_suspend();
+		return CompletionNotifier{};
 	}
 
+	// This promise starts suspended. Resume execution when 
+	// start() is called explicitly by WhenAllReadyAwaitable
 	void start(WhenAllCounter& counter) noexcept {
 		std::cout << "[WhenAllTaskPromise] start" << std::endl;
 		m_counter = &counter;
@@ -83,6 +88,8 @@ public:
 	}
 
 private:
+
+	friend class CompletionNotifier;
 
 	void rethrow_if_exception() {
 		if (m_exception) {
@@ -143,6 +150,12 @@ private:
 	coroutine_handle_t m_coroutine;
 
 };
+
+
+void CompletionNotifier::await_suspend(std::coroutine_handle<WhenAllTaskPromise> coro) const noexcept {
+	std::cout << "[CompletionNotifier] await_suspend()" << std::endl;
+	coro.promise().m_counter->notify_awaitable_completed();
+}
 
 WhenAllTask make_when_all_task(Task&& awaitable) {
 	std::cout << "[make_when_all_task] begin" << std::endl;

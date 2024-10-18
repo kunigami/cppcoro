@@ -45,7 +45,7 @@ Task f() {
 }
 
 int main() {
-  cppcoro::sync_wait(cppcoro::hw());
+  cppcoro::sync_wait(cppcoro::identity());
   #if CPPCORO_COMPILER_SUPPORTS_SYMMETRIC_TRANSFER
   std::cout << "CPPCORO_COMPILER_SUPPORTS_SYMMETRIC_TRANSFER" << std::endl;
   #endif

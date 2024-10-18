@@ -43,7 +43,7 @@ namespace cppcoro
 		typename AWAIT_RESULT = detail::remove_rvalue_reference_t<typename awaitable_traits<AWAITABLE>::await_result_t>,
 		std::enable_if_t<!std::is_void_v<AWAIT_RESULT>, int> = 0>
 	auto resume_on(SCHEDULER& scheduler, AWAITABLE awaitable)
-		-> task<AWAIT_RESULT>
+		-> Task
 	{
 		bool rescheduled = false;
 		std::exception_ptr ex;
@@ -89,7 +89,7 @@ namespace cppcoro
 		typename AWAIT_RESULT = detail::remove_rvalue_reference_t<typename awaitable_traits<AWAITABLE>::await_result_t>,
 		std::enable_if_t<std::is_void_v<AWAIT_RESULT>, int> = 0>
 	auto resume_on(SCHEDULER& scheduler, AWAITABLE awaitable)
-		-> task<>
+		-> Task
 	{
 		std::exception_ptr ex;
 		try

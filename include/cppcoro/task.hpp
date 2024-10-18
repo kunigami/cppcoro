@@ -95,6 +95,8 @@ public:
 	}
 
 	void set_continuation(std::coroutine_handle<> continuation) noexcept {
+		assert(! bool(m_continuation));
+		print("set_continuation");
 		m_continuation = continuation;
 	}
 
@@ -104,11 +106,6 @@ public:
 
 private:
 	std::coroutine_handle<> m_continuation;
-
-	enum class result_type { empty, value, exception };
-
-	result_type m_resultType = result_type::empty;
-
 	std::string m_value;
 	std::exception_ptr m_exception;
 	int m_id = -1;
@@ -147,6 +144,19 @@ public:
 	Task(const Task&) = delete;
 	Task& operator=(const Task&) = delete;
 
+	Task& operator=(Task&& other) noexcept {
+		if (std::addressof(other) != this) {
+			if (m_coroutine) {
+				m_coroutine.destroy();
+			}
+
+			m_coroutine = other.m_coroutine;
+			other.m_coroutine = nullptr;
+		}
+
+		return *this;
+	}
+
 	~Task() = default;
 
 	// Example call:
@@ -169,6 +179,7 @@ private:
 std::coroutine_handle<> FinalAwaitable::await_suspend(
 	std::coroutine_handle<TaskPromise> coro
 ) noexcept {
+	assert(bool(coro.promise().m_continuation));
 	return coro.promise().m_continuation;
 }
 

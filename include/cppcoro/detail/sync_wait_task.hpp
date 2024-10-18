@@ -122,7 +122,7 @@ sync_wait_task make_sync_wait_task(Task&& awaitable) {
 	std::cout << "make_sync_wait_task\n";
 	// Evaluates task as if make_sync_wait_task was a coroutine,
 	// to "extract" the value
-	std::string& value = co_await std::forward<Task>(awaitable);
+	std::string& value = co_await awaitable;
 	// co_await sync_wait_task_promise::yield_value(value); 
 	co_yield value;
 }
